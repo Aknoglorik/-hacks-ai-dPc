@@ -1,7 +1,9 @@
 import numpy as np
 import tkinter as tk
 from tkcalendar import DateEntry
-import sys
+import joblib
+from sklearn.ensemble import RandomForestClassifier
+import datetime as dt
 
 QUALITY = "180x80"
 
@@ -17,6 +19,7 @@ class App:
         self.menubar = tk.Menu(self.root)
 
         self.setup()
+        self.rf = joblib.load("my_random_forest.joblib")
 
     def setup(self):
         # Make menubar
@@ -33,21 +36,38 @@ class App:
 
     def on_btn_pressed(self):
         pred_date = self.date.get_date()
-        day = pred_date.day()
-        month = pred_date.month()
+        
+        year = str(pred_date).split('-')[0]
+        month = str(pred_date).split('-')[1]
+        day = str(pred_date).split('-')[2]
+        
+        date = dt.datetime.strptime(str(pred_date), '%Y-%m-%d')
+        
 
         temp = 0
         bar = 0
 
         weather = 0
         weekend = 0
-
-        self.predict([day, month, temp, bar, weather, weekend])
-
-    def predict(self, X):   # FIXME!
-        weight = np.array([0.08495557, 0.00297253, -0.06059933, 0.00481572, 0.0133653, 0.01874809])
-        X.vstack()
-        self.label['text'] = str(weight * X)
+        with open('weather/info.txt') as file:
+            for line in file:
+                spl = line.split(' ')
+                y, m, d = spl[0].split('-')
+                if y == year and month == m and d == day:
+                    print(y,m,d)
+                    temp = spl[2]
+                    bar = spl[3]
+                    wear = spl[4]
+                    week = [5]
+                    break
+            else:
+                self.label['text'] = 'нет данных о погоде'
+                return
+        
+        X = np.array(list(map(float, [day, month, temp, bar, weather, weekend])))
+        
+        res = self.rf.predict((X,))
+        self.label['text'] = str(res[0]* 506 + 2) # восстановление данных
 
     def start(self):
         self.root.mainloop()
